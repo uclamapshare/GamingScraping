@@ -1,0 +1,3656 @@
+				
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+<head>
+
+
+<SCRIPT LANGUAGE="Javascript">
+	   function TrimAll(obj) {
+      var startpos = 0, endpos = obj.value.length - 1;
+      // null string, done
+      if (endpos == -1) return;
+      // find first non-blank character
+      while (startpos <= obj.value.length && obj.value.substring(startpos, startpos + 1) == " ")
+	     startpos++;
+      // find last non-blank character
+      while (endpos >= 0 && obj.value.substring(endpos, endpos + 1) == " ") endpos--;
+      // trim the blanks
+      if (startpos > endpos) obj.value = "";
+      else obj.value = obj.value.substring(startpos, endpos + 1);
+   }    function IsAbsent(obj, objname) {
+      var retval = true;
+      for (var i = 0; i < obj.value.length; i++) {
+         if (obj.value.substring(i, i + 1) != " ") {
+            retval = false;
+            break;
+         }
+      }
+      if (retval && (objname != "")) {
+         alert("'" + objname + "' may not be left empty");
+      }
+      return retval;
+   }
+
+
+
+	function ValidateName(){
+		if (IsAbsent(document.Search.LastName, "Search field")) return false;
+		if (document.Search.LastName.value.length < 2){
+			alert("Please enter at least the first two letters of the person's last name.");
+			return false;
+		}
+	}
+	function PopupDetails(URL) {
+		DetailsWindow = window.open(URL,'Details','toolbar,scrollbars=yes,resizable=yes,width=785,height=450,left=100,screenX=100,top=100,screenY=100');
+		DetailsWindow.focus();
+	}
+</SCRIPT>
+
+<script language="javascript">
+
+//console.log("box=" + document.getElementsByTagName("path")[0].getBBox());
+	//var infowindow = new google.maps.InfoWindow();
+	var markerArray = new Array();
+	var marker
+	var intRow = 0;
+	var encodedStateName = "california";
+	var  REDPININDIAN = {
+		path: 'M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z',
+		fillColor: 'black',
+		fillOpacity: 0.8,
+		scale: 0.4,
+		strokeWeight: 3,
+		strokeColor: 'red'
+	};
+	var GREENPININDIAN = {
+		path: 'M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z',
+		fillColor: 'black',
+		fillOpacity: 0.8,
+		scale: 0.3,
+		strokeWeight: 3,
+		strokeColor: 'green'
+	};
+	var ORANGEPININDIAN = {
+		path: 'M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z',
+		fillColor: '#FF7F00',
+		fillOpacity: 0.8,
+		scale: 0.3,
+		strokeWeight: 3,
+		strokeColor: '#FF7F00'
+	};
+	var REDPINCOMMERCIAL = {
+		path: 'M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z',
+		fillColor: 'red',
+		fillOpacity: 0.8,
+		scale: 0.4
+	};
+	var GREENPINCOMMERCIAL = {
+		path: 'M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z',
+		fillColor: 'green',
+		fillOpacity: 0.8,
+		scale: 0.4
+	};
+	var ORANGEPINCOMMERCIAL = {
+		path: 'M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z',
+		fillColor: '#FF7F00',
+		fillOpacity: 0.8,
+		scale: 0.4
+	};
+	function initMap() {
+		var infowindow = new google.maps.InfoWindow();
+		console.log("loading maps");
+		// Creating a new map
+		var map = new google.maps.Map(document.getElementById("map"), {
+			disableDefaultUI: false,
+			zoom: 13,
+			mapTypeId: google.maps.MapTypeId.ROADMAP
+		});
+		var url = "/covid-19/getmappoints.aspx?v=2&encodedstatename=" + encodedStateName;
+		console.log("getting state data url=" + url);
+		$.ajax({
+			type: 'GET',
+			url: url,
+			dataType: 'text',
+			contentType: 'text/xml; charset=utf-8',
+			async: false,
+			error: function (xhr, ajaxOptions, thrownError) {
+				alert("Error: getting map data");
+				returnVal = false;
+				return returnVal;
+			},
+			success: function (xml) {
+
+				if ($(xml).find("result").text() == "bad") {
+					alert("Error during fetching map data, refresh the page to try again");
+					returnVal = false;
+					return returnVal;
+				}
+
+				var maxLongitude = -180;
+				var maxLatitude = -180;
+				var minLatitude = 180;
+				var minLongitude = 180;
+				var latitude;
+				var longitude;
+				var organizationName;
+				var UrlOrganizationName;
+				var stateName;
+				var encodedStateName;
+				var address;
+				var city;
+				var url;
+				var propertyType;
+				var ownerType;
+				var Owners;
+				var closureDate;
+				var reopenDate;
+				var locations = "[";
+				$(xml).find('Property').each(function () {
+					organizationName = $(this).find("OrganizationName").text();
+					propertyId = $(this).find("PropertyId").text();
+					city = $(this).find("City").text();
+					stateName = $(this).find("StateName").text();
+					countryName = $(this).find("CountryName").text();
+					stateId = $(this).find("StateId").text();
+					encodedStateName = $(this).find("EncodedStateName").text();
+					longitude = $(this).find("Longitude").text();
+					latitude = $(this).find("Latitude").text();
+					organizationName = $(this).find("OrganizationName").text();
+					urlOrganizationName = $(this).find("UrlOrganizationName").text();
+					address = $(this).find("StreetAddress").text();
+					propertyType = $(this).find("PropertyType").text();
+					ownerType = $(this).find("OwnerType").text();
+					owners = $(this).find("Owners").text();
+					closureDate = $(this).find("ClosedDate").text();
+					reopenDate = $(this).find("ReopenedDate").text();
+					coronavirusStatus = $(this).find("CoronavirusStatus").text();
+					if (ownerType == "INDIAN") propertyType = "Indian " + propertyType;
+					if (ownerType == "First Nation") propertyType = "First Nation " + propertyType;
+					if (locations.length > 1) locations += ",";
+					locations += "['" + organizationName + "'," + latitude + "," + longitude + "," + intRow + "]";
+					if (longitude < minLongitude) minLongitude = longitude;
+					if (latitude < minLatitude) minLatitude = latitude;
+					if (longitude > maxLongitude) maxLongitude = longitude;
+					if (latitude > maxLatitude) maxLatitude = latitude;
+					if (coronavirusStatus == "Reopened for racing without fans" || coronavirusStatus == "Reopened for racing without spectators") {
+						if (ownerType == "UNK") 
+							iconSvg = ORANGEPINCOMMERCIAL;
+						else
+							iconSvg = ORANGEPININDIAN;
+					} else if (reopenDate == "" && coronavirusStatus != "Never closed due to coronavirus") {
+						if (ownerType == "UNK") 
+							iconSvg = REDPINCOMMERCIAL;
+						else
+							iconSvg = REDPININDIAN;
+					} else {
+						if (ownerType == "UNK")
+							iconSvg = GREENPINCOMMERCIAL;
+						else
+							iconSvg = GREENPININDIAN;
+					}
+					marker = new google.maps.Marker({
+						position: new google.maps.LatLng(latitude, longitude),
+						map: map,
+						icon: iconSvg
+					});					
+					obj = new markerObject(propertyId,organizationName, address, city, propertyType, owners, ownerType, closureDate, reopenDate, countryName, stateName, stateId, encodedStateName, marker);
+					markerArray.push(obj);
+					intRow++;
+
+				});
+
+				var infoData = "";
+				for (var i = 0; i < markerArray.length; i++) {
+					google.maps.event.addListener(markerArray[i].marker, 'click', (function (marker, i) {
+						return function () {
+						//infoData = "<a href='/indian-gaming-facilities/" + markerArray[i].encodedStateName + "/" + markerArray[i].urlOrganizationName + "/'>" + markerArray[i].organizationName + "</a><br/>";
+						url = "/showproperty.cfm?PropertyIdList=" + markerArray[i].propertyId + "&PlaceID=" + markerArray[i].stateId + "&NoTempValues=1&Type=cor&PGID=";
+						if (markerArray[i].countryName == "United States") url += "4";
+						else url += "5";
+						infoData = "<a href='" + url + "'>" + markerArray[i].organizationName + "</a><br/>";
+						if (markerArray[i].owners != "") infoData += "Owned by " + markerArray[i].owners + "<br/>";
+						if (markerArray[i].propertyType == "Casino" && markerArray[i].ownerType == "UNK")
+							infoData += "Commercial " + markerArray[i].propertyType + "<br/>";
+						else
+							infoData += markerArray[i].propertyType + "<br/>";
+						infoData += markerArray[i].address;
+						if (markerArray[i].closureDate != "") infoData += "Closed " + markerArray[i].closureDate + "<br/>";
+						if (markerArray[i].reopenDate != "") infoData += "Reopened " + markerArray[i].reopenDate + "<br/>";
+						infowindow.setContent(infoData);
+						infowindow.open(map, markerArray[i].marker);
+						}
+					})(markerArray[i].marker, i));
+				}
+			  console.log("created info windows");
+				var bounds = new google.maps.LatLngBounds();
+				swPoint = new google.maps.LatLng(minLatitude, minLongitude);
+				nePoint = new google.maps.LatLng(maxLatitude, maxLongitude);
+				bounds.extend(swPoint);
+				bounds.extend(nePoint);
+				map.fitBounds(bounds);
+			}
+		});
+	}
+	function markerObject(propertyId,organizationName, address, city, propertyType, owners, ownerType, closureDate, reopenDate, countryName, stateName, stateId, encodedStateName,marker) {
+		//this.marker = marker;
+		this.propertyId = propertyId;
+		this.organizationName = organizationName;
+		this.city = city;
+		this.address = address;
+		this.propertyType = propertyType;
+		this.owners = owners;
+		this.ownerType = ownerType;
+		this.closureDate = closureDate;
+		this.reopenDate = reopenDate;
+		this.countryName = countryName;
+		this.stateName = stateName;
+		this.stateId = stateId;
+		this.encodedStateName = encodedStateName
+		this.marker = marker;
+	}
+</script>
+
+	
+		<title>California COVID-19 Gaming Propery Closings and Reopenings</title>
+		<link rel="canonical" href="/covid-19/united-states/california/" />
+	
+	   <link href="/Common/LoggedIn.css" rel="stylesheet" type="text/css">
+<link rel="stylesheet" href="/Common/LoggedIn.css" type="text/css">
+<link rel="shortcut icon" href="/favicon.ico" >
+<SCRIPT language="JavaScript">
+function loginHelp() {
+	popupWindow = window.open('/loginhelp.cfm?email=' + document.loginForm.email.value, 'popup', 'height=300, width=550,scrollbars');
+	popupWindow.focus();
+	return false;
+}
+
+function OpenPopup(Url) {
+	DetailsWindow = window.open(Url,'Details','toolbar,scrollbars=yes,resizable=yes,width=785,height=450,left=100,screenX=100,top=100,screenY=100');
+	DetailsWindow.focus();
+}
+function Validate() {
+	if (document.loginForm.email.value == "") {
+		alert("Please enter your email address");
+		document.loginForm.email.focus();
+		return false;
+	}
+}
+
+function efocus(email){
+	if(email.value == 'Email'){
+		email.value='';
+	}
+	email.className = "darker"
+}
+function notfocus(email){
+	if(email.value == ''){
+		email.value = 'Email';
+		email.className = "lighter";
+	}
+	else{
+		email.className = "darker"
+	}
+}
+
+function Passfocus(password){
+	if(password.value == 'password'){
+		password.value='';
+	}
+	password.className = "darker"
+}
+function Passnotfocus(password){
+	if(password.value == ''){
+		password.value = 'password';
+		password.className = "lighter";
+	}
+	else{
+		password.className = "darker"
+	}
+}
+
+function namefocus(LastName){
+	//alert(LastName.value);
+	if(LastName.value == 'Enter Name'){
+		LastName.value='';
+	}
+	LastName.className = "darker"
+}
+function namenotfocus(LastName){
+	//alert(LastName.value);
+	if(LastName.value == ''){
+		LastName.value = 'Enter Name';
+		LastName.className = "lighter";
+	}
+	else{
+		LastName.className = "darker"
+	}
+}
+</SCRIPT>
+
+<style>
+
+	#closedIndian {
+		height: 16px;
+		fill: red;
+		stroke: red;
+		stroke-width: 10;
+	}
+	#openIndian {
+		height: 16px;
+		fill: green;
+		stroke: green;
+		stroke-width: 10;
+	}
+	#closedCommercial {
+		height: 18x;
+		fill: black;
+		stroke: red;
+		stroke-width:10;
+	}
+	#openCommercial {
+		height: 18px;
+		fill: black;
+		stroke: green;
+		stroke-width: 10;
+	}
+	#racingOnlyCommercial {
+		height: 18px;
+		fill: #FF7F00;
+		stroke: #FF7F00;
+		stroke-width: 10;
+	}
+	#MainCol {
+		width: 1300px;
+	}
+
+	.mainSearch {
+		width:1300px;
+	}
+	.propertyCol {
+		width:175px;
+		float:left;
+		margin-right:15px;
+		line-height:18px;
+	}
+	.cityCol {
+		width:85px;
+		float:left;
+		margin-right:15px;
+		line-height:18px;
+	}
+	.dateCol {
+		width:75px;
+		float:left;
+		margin-right:15px;
+		line-height:18px;
+		text-align:right;
+	}
+	.statusCol {
+		width:90px;
+		float:left;
+		margin-right:15px;
+		line-height:18px;
+	}
+	.typeCol {
+		width:125px;
+		float:left;
+		margin-right:15px;
+		line-height:18px;
+	}
+	
+	.articleCol {
+		float:left;
+		margin-right:15px;
+		word-wrap:break-word;
+		line-height:18px;
+		width: 290px;
+	}
+	.colHeader {
+		font-weight:bold;
+		margin-bottom:3px;
+	}
+	.articleList {
+		text-indent:-10px;
+		margin-left:10px;
+	}
+	ul {
+		margin:0;
+		padding:0 0 0 0;
+		list-style-type: none;
+	}
+	#mainCol {
+		width:1200px;
+	}
+	svg {
+		width:100%;
+		overflow:visible;
+		height:20px;
+	}
+</style>
+
+
+</head>
+
+
+<body topmargin="0" leftmargin="0">
+
+    
+
+			<script type="text/javascript" src="/Common/jquery.js"></script>
+			<script type="text/javascript" src="/Common/jquery.jdMenu.js"></script>
+			<script type="text/javascript" src="/Common/jquery.dimensions.js"></script>
+			<script type="text/javascript" src="/Common/jquery.positionBy.js"></script>
+			<script type="text/javascript" src="/Common/jquery.bgiframe.js"></script>
+			<script type="text/javascript" src="/Common/LaunchMClient.js"></script>
+			<link rel="stylesheet" href="/common/jquery.jdMenuBlue.css" type="text/css" />
+
+			<script language="Javascript">
+				var OriginalImages = new Array();
+				function Popup(URL) {
+					DetailsWindow = window.open(URL,'Details','toolbar,scrollbars=yes,resizable=yes,width=775,height=450,left=100,screenX=100,top=100,screenY=100');
+					DetailsWindow.focus();
+				}
+				function Logout(){
+					
+					if (confirm('Your login information must be reentered next time you use GamingDirectory.com.  Are you sure you wish to log out?')){
+						location.replace('/logoff.cfm');
+					}
+					else {return;}
+					
+				}
+			</script>
+<style>
+	#navBar {
+		position:absolute;
+		top:53px;
+		left:295px; 
+		padding-top:23px; 
+		width:780px; 
+		height:47px; 
+		vertical-align:bottom;
+	}
+	.navItem {
+		background-color:#CCCCCC;
+		height:12px;
+		padding:0 10px 9px 10px;
+		font-weight:bold;
+		margin:0 2px 0 0;
+		float:left;
+		font-size:13px;
+		vertical-align:middle;
+		border:1px solid #aCaCaC;
+	}
+	.navitem a {
+		text-decoration:none;
+	}
+	.hr {
+		position:absolute;
+		top:95px;
+	}
+</style>
+	
+
+	<div style="position:absolute;top:0px;left:500px;z-index:10;">
+		<div style="float:left; font-family:arial; font-size:9pt; color:#676767;margin:5px 10px 0 0;vertical-align:top">
+			<strong>You are logged in as Randall Akee.</strong> 
+			Not Randall Akee? 
+			<a href="/?logoff=true" style="color:#2586b8;">click here</a>
+		</div>
+		<div style="float:left"><a href="/registered/MyInfo/"><img src="/images/myinfofade.gif" border="0px" vertical-align:top;" /></a></div>
+		<div style="float:left"><a href="/?logoff=true"><img src="/images/logoutfade.gif" border="0px"  vertical-align:top; margin-right:6px;" /></a></div>
+		<div style="clear:both"></div>
+	</div>
+
+		<a href="/registered/search/"><img src="/images/GamingDirectoryMastead2020.jpg"  style="vertical-align:bottom;margin-left:30px;">
+		<div id="navBar">
+			<ul class="jd_menu">
+				<li><div class="navItem"><a href="/registered/search/">Search</a></div></li>
+				<li><div class="navItem"><a href="/covid-19/">COVID-19</a></div></li>
+				<li><div class="navItem"><a href="/Registered/Location/">Properties by Location</a></div></li>
+				<li><div class="navItem"><a href="/Registered/Directories/">Directories</a></div></li>
+				<li><div class="navItem"><a href="/Registered/SavedSearches/">Saved Searches</a></div></li>
+				<li><div class="navItem"><a href="/whoswho.cfm">Who's Who</a></div></li>
+				<li><div class="navItem"><a href="/FAQs.cfm">FAQs</a></div></li>
+
+			</ul>
+		</div>
+
+	<div class="hrBlue"></div>
+
+		<div id="all" style="width:1300px; margin-bottom:20px; margin-left:70px;border:0">
+			<div id="MainCol" style="margin-left:0px; width:100%;border:0">
+	
+		<div style="margin-bottom:10px;margin-top:10px">
+			<a href="/covid-19/" style="font-size:14px">COVID-19</a> > <a href="/covid-19/united-states/" style="font-size:14px">United States</a> > <span  style="font-size:14px">California</span>
+		</div>
+		<div id="headers" style="font-size:20px;">
+			California COVID-19 Gaming Propery Closings and Reopenings
+		</div>
+
+		
+		
+		<div style="margin:10px 0 10px 0;font-size:14px">
+			We have confirmed the closing of    130 gaming properties in California due to the coronavirus pandemic.      71 gaming properties have since reopened including      2 that offer live racing without spectators.
+		</div>
+		<div style="margin:10px 0 10px 0;font-size:14px">
+			The map shows the location of all properties we have chronicled in California. 
+			Click on a property icon to see full details for the property including name, owner, property type, address and closing and opening date. 
+			Zoom in or expand the map to full-screen mode to see property location details more clearly.
+		</div>
+		
+		<div id="headers" style="font-size:16px;width:650px;text-align:center;margin-bottom:0px">
+			
+				Current California Gaming Property Industry Reopening Map
+			
+		</div>
+		<div style="font-size:14px;width:650px;text-align:center;margin-bottom:10px">
+			<span style="color:green">    72 (55%) open properties,</span> <span style="color:red">    58 (45%) closed  properties</span>
+		</div>
+		
+	
+	
+	<div id="map" style="height:420px;width:650px;float:left;margin-bottom:10px">
+		
+			<script async defer
+			src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDjGTLhpvCHAj_YFPt6I1hoSaa47ijICEA&callback=initMap">
+		</script>
+		
+	</div>
+	
+	
+		<div style="border:1px solid black;margin:10px 10px 10px 10px;padding:10px;width:230px;height:175px;float:left">
+			<div style="font-weight:bold;text-align:center;margin-bottom:10px">Legend</div>
+			<div style="position:relative">
+				<svg id="closedIndian" style="position:absolute;top:0px" viewBox="500 -10 60 78" xmlns="http://www.w3.org/2000/svg"> \
+					  <path d="M53.1,48.1c3.9-5.1,6.3-11.3,6.3-18.2C59.4,13.7,46.2,0.5,30,0.5C13.8,0.5,0.6,13.7,0.6,29.9 c0,6.9,2.5,13.1,6.3,18.2C12.8,55.8,30,77.5,30,77.5S47.2,55.8,53.1,48.1z"></path> \
+				</svg> 
+				<div style="position:absolute;top:5px;left:25px">
+					Closed commercial property
+				</div>
+			</div>
+			
+			<div style="position:relative">
+				<svg id="openIndian"  style="position:absolute;top:30px"  viewBox="500 -10 60 78" xmlns="http://www.w3.org/2000/svg"> \
+					  <path d="M53.1,48.1c3.9-5.1,6.3-11.3,6.3-18.2C59.4,13.7,46.2,0.5,30,0.5C13.8,0.5,0.6,13.7,0.6,29.9 c0,6.9,2.5,13.1,6.3,18.2C12.8,55.8,30,77.5,30,77.5S47.2,55.8,53.1,48.1z"></path> \
+				</svg> 
+				<div style="position:absolute;top:35px;left:25px">
+					Open commercial property
+				</div>
+			
+			</div>
+			<div style="position:relative">
+				<svg id="closedCommercial"  style="position:absolute;top:60px"  viewBox="400 -10 60 78" xmlns="http://www.w3.org/2000/svg"> \
+					  <path d="M53.1,48.1c3.9-5.1,6.3-11.3,6.3-18.2C59.4,13.7,46.2,0.5,30,0.5C13.8,0.5,0.6,13.7,0.6,29.9 c0,6.9,2.5,13.1,6.3,18.2C12.8,55.8,30,77.5,30,77.5S47.2,55.8,53.1,48.1z"></path> \
+				</svg> 
+				<div style="position:absolute;top:65px;left:25px">
+					Closed Indian property
+				</div>			
+			</div>
+	
+			<div style="position:relative">
+				<svg id="openCommercial"  style="position:absolute;top:90px"  viewBox="440 -10 60 78" xmlns="http://www.w3.org/2000/svg"> \
+					  <path d="M53.1,48.1c3.9-5.1,6.3-11.3,6.3-18.2C59.4,13.7,46.2,0.5,30,0.5C13.8,0.5,0.6,13.7,0.6,29.9 c0,6.9,2.5,13.1,6.3,18.2C12.8,55.8,30,77.5,30,77.5S47.2,55.8,53.1,48.1z"></path> \
+				</svg> 
+				<div style="position:absolute;top:95px;left:25px">
+					Open Indian property
+				</div>			
+			</div>
+			<div style="position:relative">
+				<svg id="racingOnlyCommercial"  style="position:absolute;top:120px"  viewBox="440 -10 60 78" xmlns="http://www.w3.org/2000/svg"> \
+					  <path d="M53.1,48.1c3.9-5.1,6.3-11.3,6.3-18.2C59.4,13.7,46.2,0.5,30,0.5C13.8,0.5,0.6,13.7,0.6,29.9 c0,6.9,2.5,13.1,6.3,18.2C12.8,55.8,30,77.5,30,77.5S47.2,55.8,53.1,48.1z"></path> \
+				</svg> 
+				<div style="position:absolute;top:124px;left:25px">
+					Racing without spectators commercial property
+				</div>			
+			</div>
+		</div>
+		<div style="clear:both"></div>
+
+	
+		<a name="Status"></a>
+		<div id="headers" style="font-size:16px;width:650px;text-align:left;margin-bottom:0px">
+			California Gaming Properties and Their COVID-19 Status
+		</div>
+
+		<div style="font-size:14px;width:1175px;text-align:left;margin:10px 0 10px 0;font-weight:none">
+			The table below 
+			
+				lists all    130 California gaming properties.
+			
+			You can sort the table by any column and you can click a property name to view additional property details.
+		</div>
+
+		<div class="propertyCol colHeader" style="margin-top:18px;"><a href="/covid-19/united-states/california/?Sort=2#Status" rel="nofollow">Property</a></div>
+		<div class="cityCol colHeader" style="margin-top:18px;"><a href="/covid-19/united-states/california/?Sort=23,2#Status" rel="nofollow">City</a></div>
+		<div class="typeCol colHeader" style="margin-top:18px"><a href="/covid-19/united-states/california/?Sort=24,2#Status" rel="nofollow">Property Type</a></div>
+		<div class="statusCol colHeader" style="margin-top:18px"><a href="/covid-19/united-states/california/?Sort=10,2#Status" rel="nofollow">Status</a></div>
+		<div class="dateCol colHeader" style="margin-top:18px;"><a href="/covid-19/united-states/california/?Sort=7,2#Status" rel="nofollow">Date Closed</a></div>
+		<div class="dateCol colHeader"><a href="/covid-19/united-states/california/?Sort=9,2#Status" rel="nofollow">Date Reopened</a></div>
+		<div class="dateCol colHeader" style="margin-top:18px;">Articles</div>
+		<div style="clear:both"></div>
+	
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=346200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					500 Club
+				</a>
+			</div>
+			<div class="cityCol">
+				Clovis&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/500ClubCasino/photos/a.155234141207356/2931201480277261' target='article'>500 Club has temporarily suspended operations</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=41300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Agua Caliente Casino Palm Springs
+				</a>
+			</div>
+			<div class="cityCol">
+				Palm Springs&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/two-agua-caliente-casinos-to-reopen-22-may-235281' target='article'>Two Agua Caliente casinos to reopen 22 May</a></li><li class='articleList'><a href='https://www.sparesortcasino.com' target='article'>Agua Caliente casinos update their reopening status</a></li><li class='articleList'><a href='https://kesq.com/news/2020/03/17/agua-caliente-closing-casinos-all-non-essential-enterprises/' target='article'>Agua Caliente closing casinos</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=530600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Agua Caliente Resort Casino Spa Rancho Mirage
+				</a>
+			</div>
+			<div class="cityCol">
+				Rancho Mirage&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/two-agua-caliente-casinos-to-reopen-22-may-235281' target='article'>Two Agua Caliente casinos to reopen 22 May</a></li><li class='articleList'><a href='https://www.hotwatercasino.com' target='article'>Reopening status updated for Agua Caliente casinos</a></li><li class='articleList'><a href='https://kesq.com/news/2020/03/17/agua-caliente-closing-casinos-all-non-essential-enterprises/' target='article'>Agua Caliente closing casinos</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=446700&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Alameda County Fairgrounds
+				</a>
+			</div>
+			<div class="cityCol">
+				Pleasanton&nbsp;
+			</div>
+			<div class="typeCol">
+				Horse Track&nbsp;
+			</div>
+			<div class="statusCol">
+				Racing without Spectators&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">19 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/alamedacountyfair/posts/10158635999948699' target='article'>Live racing returns to Alameda County Fairgrounds</a></li><li class='articleList'><a href='https://www.facebook.com/pleasantonracing/posts/10156799818796890' target='article'>Alameda County Fairgrounds OTB is closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1260400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Army Street Bingo
+				</a>
+			</div>
+			<div class="cityCol">
+				San Francisco&nbsp;
+			</div>
+			<div class="typeCol">
+				Bingo Hall&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				11 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/463231060361688/photos/a.540725742612219/3895470037137756' target='article'>Army Street Bingo has temporarily suspended operations</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=950&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Artichoke Joe's Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				San Bruno&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://artichokejoes.com/' target='article'>Artichoke Joe's Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=555700&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Augustine Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Coachella&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				15 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">15 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/augustine-casino-to-reopen-on-monday-235764' target='article'>Augustine Casino to reopen on Monday</a></li><li class='articleList'><a href='https://augustinecasino.com/an-update-from-augustine-casino' target='article'>Augustine Casino temporarily closes in response to COVID-19</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1002500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Bankers Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Salinas&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				21 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/Bankers.Casino/posts/2856938394373881' target='article'>Bankers Casino temporarily closes</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=41700&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Barona Resort & Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Lakeside&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">27 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/barona-resort-and-casino-to-reopen-wednesday-235367' target='article'>Barona Resort and Casino to reopen Wednesday</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/barona-resort-and-casino-extends-closure-to-19-april-234022' target='article'>Barona Resort & Casino extends closure to 19 April</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/barona-resort-and-casino-will-remain-closed-until-further-notice-234555' target='article'>Barona Resort & Casino will remain closed until further notice</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/five-tribes-jointly-announce-casino-closures-233924' target='article'>Five tribes jointly announce casino closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=51900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Bay 101 Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				San Jose&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				14 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/bay-101-casino-extends-temporary-closure-234755' target='article'>Bay 101 Casino extends temporary closure</a></li><li class='articleList'><a href='https://www.facebook.com/Bay101Casino/posts/3587203844637564' target='article'>Bay 101 Casino remains closed</a></li><li class='articleList'><a href='https://www.facebook.com/Bay101Casino/photos/a.980319238659384/3383152445042706' target='article'>Bay 101 Casino will remain closed through April</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/bay-101-casino-to-remain-closed-indefinitely-234702' target='article'>Bay 101 Casino to remain closed indefinitely</a></li><li class='articleList'><a href='https://www.facebook.com/Bay101Casino/photos/a.980319238659384/3342390702452214' target='article'>Bay 101 Casino is temporarily suspending all operations</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=698300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Bear River Casino Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				Loleta&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">24 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/california-casinos-approach-reopening-dates-235201' target='article'>California casinos approach reopening dates</a></li><li class='articleList'><a href='https://www.facebook.com/BearRiverCasinoResort/posts/3481114105250999' target='article'>Bear River Casino Resort reopens</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/bear-river-casino-resort-in-california-closed-until-further-notice-234443' target='article'>Bear River Casino Resort in California closed until further notice</a></li><li class='articleList'><a href='https://www.facebook.com/BearRiverCasinoResort/photos/a.516200895075683/3319953751367036' target='article'>Bear River Casino Resort will reopen in April</a></li><li class='articleList'><a href='https://www.facebook.com/BearRiverCasinoResort/photos/a.516200895075683/3312591862103225' target='article'>Casino closed for at least one week</a></li><li class='articleList'><a href='https://www.facebook.com/BearRiverCasinoResort/photos/a.516238645071908/3310268385668906' target='article'>Bear River Casino Resort/Pump and Play temporarily closing</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=915700&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Bear River Pump and Play
+				</a>
+			</div>
+			<div class="cityCol">
+				Loleta&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">24 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/california-casinos-approach-reopening-dates-235201' target='article'>California casinos approach reopening dates</a></li><li class='articleList'><a href='https://www.facebook.com/BearRiverCasinoResort/photos/a.516238645071908/3310268385668906' target='article'>Bear River Casino Resort/Pump and Play temporarily closing</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1260500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Bingo Ranch
+				</a>
+			</div>
+			<div class="cityCol">
+				Livermore&nbsp;
+			</div>
+			<div class="typeCol">
+				Bingo Hall&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				13 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/Bingo4CHEF/posts/3137447936314652' target='article'>Bingo Ranch is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=528700&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Black Oak Casino Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				Tuolumne&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">1 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/black-oak-casino-resort-will-reopen-1-june-235323' target='article'>Black Oak Casino Resort will reopen 1 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/black-oak-casino-resort-to-remain-closed-until-further-notice-234252' target='article'>Black Oak Casino Resort to remain closed until further notice</a></li><li class='articleList'><a href='https://www.mymotherlode.com/news/local/1027719/black-oak-casino-to-close-due-to-covid-19-crisis.html' target='article'>Black Oak Casino to temporarily close due to Covid-19 crisis</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1259400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Blue Devils Bingo - Concord
+				</a>
+			</div>
+			<div class="cityCol">
+				Concord&nbsp;
+			</div>
+			<div class="typeCol">
+				Bingo Hall&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">13 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/BDBingo/posts/2912758155444671' target='article'>Blue Devils Bingo - Concord reopens with Drive-In Bingo</a></li><li class='articleList'><a href='https://www.facebook.com/BDBingo/posts/2710373599016462' target='article'>Blue Devil Bingo is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=548800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Blue Lake Casino & Hotel
+				</a>
+			</div>
+			<div class="cityCol">
+				Blue Lake&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.bluelakecasino.com/covid19-update-temp-closure' target='article'>Blue Lake Casino & Hotel temporarily closing amid coronavirus</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=42500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Cache Creek Casino Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				Brooks&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">8 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/cache-creek-casino-resort-announces-8-june-reopening-235473' target='article'>Cache Creek Casino Resort announces 8 June reopening</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/blue-chip-casino-to-close-on-monday-233836' target='article'>Blue Chip Casino to close on Monday</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=249800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Cahuilla Casino Hotel
+				</a>
+			</div>
+			<div class="cityCol">
+				Anza&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">27 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/california-casinos-approach-reopening-dates-235201' target='article'>California casinos approach reopening dates</a></li><li class='articleList'><a href='https://www.facebook.com/cahuillacasinohotel/posts/3285336208145596' target='article'>Cahuilla Casino Hotel is reopening</a></li><li class='articleList'><a href='https://www.facebook.com/cahuillacasinohotel/posts/3144306905581861' target='article'>Cahuilla Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=98500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					California Grand Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Pacheco&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1129300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Canyon Lanes at Morongo
+				</a>
+			</div>
+			<div class="cityCol">
+				Cabazon&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">29 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.morongocasinoresort.com/coronavirus' target='article'>Morongo Casino Resort & Spa is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=514800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Capitol Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Sacramento&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/CapitolCasino/posts/10163286465275048' target='article'>Capitol Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=38500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Casino M8trix
+				</a>
+			</div>
+			<div class="cityCol">
+				San Jose&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				14 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.casinom8trix.com/' target='article'>Casino M8trix is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=78800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Casino Monterey - Marina Club
+				</a>
+			</div>
+			<div class="cityCol">
+				Marina&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.casinomonterey.com/' target='article'>Casino Monterey - Marina Club is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=843300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Casino Morongo
+				</a>
+			</div>
+			<div class="cityCol">
+				Cabazon&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/two-southern-california-casinos-begin-reopening-235262' target='article'>Two Southern California casinos begin reopening</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/morongo-casino-resort-and-spa-and-casino-morongo-extend-closure-dates-234213' target='article'>Morongo Casino Resort & Spa and Casino Morongo extend closure dates</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/morongo-casino-resort-and-spa-and-casino-morongo-will-remain-closed-until-further-notice-234418' target='article'>Morongo Casino Resort and Spa and Casino Morongo will remain closed until further notice</a></li><li class='articleList'><a href='https://www.morongocasinoresort.com/casinomorongo' target='article'>Casino Morongo closes temporarily</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=522600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Casino Pauma
+				</a>
+			</div>
+			<div class="cityCol">
+				Pauma Valley&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				15 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">12 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/casino-pauma-to-begin-phased-reopening-on-12-june-235658' target='article'>Casino Pauma to begin phased reopening on 12 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/casino-pauma-extends-temporary-closure-until-further-notice-235298' target='article'>Casino Pauma extends temporary closure until further notice</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/southern-california-casinos-and-card-rooms-announce-temporary-closures-234374' target='article'>Southern California casinos and card rooms announce temporary closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=104600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Casino Real
+				</a>
+			</div>
+			<div class="cityCol">
+				Manteca&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://twitter.com/TheCasinoReal/status/1241624764700962816' target='article'>Casino Real is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=43200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Cher-Ae Heights Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Trinidad&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/cher-ae-heights-casino-to-reopen-22-may-235265' target='article'>Cher-Ae Heights Casino to reopen 22 May</a></li><li class='articleList'><a href='https://www.facebook.com/cheraeheightscasino/posts/3229046277125252' target='article'>Cher-Ae Heights Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=41600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Chicken Ranch Bingo & Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Jamestown&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">1 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/chicken-ranch-bingo-and-casino-plans-to-reopen-1-june-235355' target='article'>Chicken Ranch Bingo and Casino plans to reopen 1 June</a></li><li class='articleList'><a href='https://www.facebook.com/chickenranchcasino/photos/a.273223179457262/2681205545325668' target='article'>Chicken Ranch Bingo & Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=595800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Chukchansi Gold Resort & Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Coarsegold&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">1 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/chukchansi-gold-resort-casino-reopening-1-june-235353' target='article'>Chukchansi Gold Resort Casino reopening 1 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/chukchansi-gold-resort-and-casino-to-suspend-operations-234222' target='article'>Chukchansi Gold Resort & Casino to suspend operations</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=42800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Chumash Casino Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				Santa Ynez&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">10 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/chumash-casino-resort-to-welome-back-guests-on-10-june-235444' target='article'>Chumash Casino Resort to welome back guests on 10 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/chumash-casino-resort-extends-closure-for-another-30-days-234697' target='article'>Chumash Casino Resort extends closure for another 30 days</a></li><li class='articleList'><a href='https://www.facebook.com/chumashcasino/posts/10157049549521176' target='article'>Chumash Casino Resort remains closed</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/chumash-casino-resort-extends-temporary-closure-dates-234212' target='article'>Chumash Casino Resort extends temporary closure dates</a></li><li class='articleList'><a href='https://www.facebook.com/chumashcasino/posts/10156833963661176' target='article'>Chumash Casino Resort is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=246800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Club One Casino and Event Center
+				</a>
+			</div>
+			<div class="cityCol">
+				Fresno&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/clubonefresno/photos/a.222946357721703/3544154228934216' target='article'>Club One Casino and Event Center will reopen in May</a></li><li class='articleList'><a href='https://www.facebook.com/clubonefresno/posts/3568412636508375' target='article'>Club One Casino and Event Center will remain closed</a></li><li class='articleList'><a href='https://www.facebook.com/clubonefresno/photos/a.222946357721703/3506861229330183' target='article'>Club One Casino and Event Center is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=41900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Colusa Casino Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				Colusa&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">3 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/colusa-casino-resort-to-reopen-on-3-june-235541' target='article'>Colusa Casino Resort to reopen on 3 June</a></li><li class='articleList'><a href='http://www.colusacasino.com/wp-content/uploads/2020/03/Public-Statement-of-Closure.pdf' target='article'>Colusa Casino Resort is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=345500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Commerce Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Commerce&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				14 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">19 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/commerce-casino-to-reopen-on-friday-235864' target='article'>Commerce Casino to reopen on Friday</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/california-s-largest-card-rooms-to-shut-down-operations-amid-covid-19-pandemic-234227' target='article'>California’s largest card rooms to shut down operations amid COVID-19 pandemic</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=250100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Coyote Valley Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Redwood Valley&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">7 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/reopening-of-coyote-valley-casino-235644' target='article'>Reopening of Coyote Valley Casino</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/extended-closure-of-coyote-valley-casino-235387' target='article'>Extended closure of Coyote Valley Casino</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/coyote-valley-casino-closed-through-21-may-235065' target='article'>Coyote Valley Casino closed through 21 May</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/coyote-valley-casino-extends-closure-by-two-weeks-234789' target='article'>Coyote Valley Casino extends closure by two weeks</a></li><li class='articleList'><a href='https://www.coyotevalleycasino.com/covid-19' target='article'>Coyote Valley Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1189300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Coyote Valley One Stop Shop
+				</a>
+			</div>
+			<div class="cityCol">
+				Redwood Valley&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=246000&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Crystal Casino & Hotel
+				</a>
+			</div>
+			<div class="cityCol">
+				Compton&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://thecrystalcasino.com/covid-19_update/' target='article'> Crystal Casino & Hotel is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=421500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Del Mar
+				</a>
+			</div>
+			<div class="cityCol">
+				Del Mar&nbsp;
+			</div>
+			<div class="typeCol">
+				Horse Track&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				1 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/DelMarRaces/posts/10158434743688331' target='article'>Del Mar reopening update</a></li><li class='articleList'><a href='http://www.delmarfairgrounds.com/index.php?fuseaction=calendar.home&month=3&year=20&calCatID=' target='article'>Surfside Race Place at Del Mar suspends off-track wagering</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=531600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Desert Rose Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Alturas&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">1 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=530200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Diamond Jim's Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Rosamond&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/playDJC/posts/1664104807060790' target='article'>Diamond Jim's Casino has temporarily ceased all operations</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=246500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Diamond Mountain Casino Hotel Brewery
+				</a>
+			</div>
+			<div class="cityCol">
+				Susanville&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">4 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/DiamondMountainCasino/posts/10158384275579805' target='article'>Diamond Mountain Casino Hotel Brewery reopens</a></li><li class='articleList'><a href='https://www.facebook.com/DiamondMountainCasino/posts/10158098186959805' target='article'>Diamond Mountain Casino Hotel Brewery is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=249900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Eagle Mountain Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Porterville&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">23 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://abc30.com/eagle-mountain-casino-tule-river-indian-reopen/6249400/' target='article'>Eagle Mountain Casino moves closer to reopening</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/eagle-mountain-casino-to-reopen-at-midnight-on-23-june-235916' target='article'>Eagle Mountain Casino to reopen at midnight on 23 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/eagle-mountain-casino-extends-closure-until-15-june-235157' target='article'>Eagle Mountain Casino extends closure until 15 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/eagle-mountain-casino-closure-extended-to-30-april-234444' target='article'>Eagle Mountain Casino closure extended to 30 April</a></li><li class='articleList'><a href='https://www.turnto23.com/news/coronavirus/eagle-mountain-casino-to-temporarily-close-due-to-covid-19-concerns' target='article'>Eagle Mountain Casino to temporarily close due to COVID-19 concerns</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/eagle-mountain-casino-closed-until-3-april-2020-234445' target='article'>Eagle Mountain Casino closed until 3 April 2020</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=49900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Elk Valley Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Crescent City&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">1 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/elk-valley-casino-announces-1-june-reopening-235568' target='article'>Elk Valley Casino announces 1 June reopening</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/elk-valley-casino-extends-temporary-closure-until-further-notice-235240' target='article'>Elk Valley Casino extends temporary closure until further notice</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/elk-valley-casino-to-be-closed-through-15-may-234790' target='article'>Elk Valley Casino to be closed through 15 May</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/elk-valley-casino-extends-closure-to-30-april-234256' target='article'>Elk Valley Casino extends closure to 30 April</a></li><li class='articleList'><a href='https://www.facebook.com/ElkValleyCasino/photos/a.218184517973/10158088701677974' target='article'>Elk Valley Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=41400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Fantasy Springs Resort Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Indio&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">2 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/fantasy-springs-resort-casino-reopened-on-2-june-235596' target='article'>Fantasy Springs Resort Casino reopened on 2 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/fantasy-springs-casino-resort-extends-temporary-closure-234258' target='article'>Fantasy Springs Casino Resort extends temporary closure</a></li><li class='articleList'><a href='https://www.fantasyspringsresort.com/cabazon-band-of-mission-indians-announces-temporary-closure-of-fantasy-springs-effective-tuesday-march-17th/' target='article'>Cabazon Band of Mission Indians announces temporary closure of Fantasy Springs, effective Tuesday, March 17th</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=250000&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Feather Falls Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Oroville&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">27 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/featherfallscasino/posts/10157357689370868' target='article'>Feather Falls Casino reopens</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/feather-falls-casino-will-close-temporarily-234253' target='article'>Feather Falls Casino will close temporarily</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1260600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Florin Road Bingo
+				</a>
+			</div>
+			<div class="cityCol">
+				Sacramento&nbsp;
+			</div>
+			<div class="typeCol">
+				Bingo Hall&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/permalink.php?story_fbid=3053255124726178&id=101553489896371' target='article'>Florin Road Bingo is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1260100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Foothill Square Bingo
+				</a>
+			</div>
+			<div class="cityCol">
+				Oakland&nbsp;
+			</div>
+			<div class="typeCol">
+				Bingo Hall&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/foothill-square-bingo-extends-closure-234500' target='article'>Foothill Square Bingo extends closure</a></li><li class='articleList'><a href='https://www.facebook.com/foothillsquarebingo/photos/a.2581146995259781/3758179340889868' target='article'>Foothill Square Bingo will remain closed</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/foothill-square-bingo-temporarily-closes-234499' target='article'>Foothill Square Bingo temporarily closes</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=936300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Garcia River Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Point Arena&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				27 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/GarciaRiverCasino/posts/255571637120179' target='article'>Garcia River Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1243600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Garlic City Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Gilroy&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				14 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/GarlicCityCasino/posts/3060606243990327' target='article'>Garlic City Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=245000&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Gold Country Casino & Hotel
+				</a>
+			</div>
+			<div class="cityCol">
+				Oroville&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/gold-country-casino-begins-phased-reopening-on-friday-235278' target='article'>Gold Country Casino begins phased reopening on Friday</a></li><li class='articleList'><a href='https://www.chicoer.com/2020/03/18/gold-country-casino-temporarily-suspending-operations/' target='article'>Gold Country Casino temporarily suspending operations</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=526500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Golden Acorn Casino & Travel Center
+				</a>
+			</div>
+			<div class="cityCol">
+				Campo&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/golden-acorn-casino-and-travel-center-reopens-with-limited-capacity-235343' target='article'>Golden Acorn Casino and Travel Center reopens with limited capacity</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/golden-acorn-casino-and-travel-center-to-remain-closed-until-further-notice-234259' target='article'>Golden Acorn Casino & Travel Center to remain closed until further notice</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/five-tribes-jointly-announce-casino-closures-233924' target='article'>Five tribes jointly announce casino closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=420500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Golden Gate Fields
+				</a>
+			</div>
+			<div class="cityCol">
+				Berkeley&nbsp;
+			</div>
+			<div class="typeCol">
+				Horse Track&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				12 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.goldengatefields.com/golden-gate-fields-will-temporarily-close-for-live-racing-effective-immediately-in-response-to-the-covid-19-pandemic/' target='article'>Golden Gate Fields suspends live racing</a></li><li class='articleList'><a href='https://www.sfchronicle.com/sports/article/Golden-Gate-Fields-continues-horse-racing-closes-15130559.php' target='article'>Golden Gate Fields continues horse racing, closes to public</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=306300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Golden West Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Bakersfield&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/GoldenWestCasino/posts/10157926441858796' target='article'>Golden West Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=638700&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Graton Resort & Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Rohnert Park&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">18 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/graton-resort-and-casino-reopening-on-18-june-235640' target='article'>Graton Resort and Casino reopening on 18 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/graton-resort-and-casino-closed-throughout-april-234265' target='article'>Graton Resort & Casino closed throughout April</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/graton-resort-and-casino-will-remain-closed-until-further-notice-234841' target='article'>Graton Resort and Casino will remain closed until further notice</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/temporary-closure-of-all-station-casino-properties-233923' target='article'>Temporary closure of all Station Casino properties</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=711600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Hard Rock Hotel & Casino Sacramento at Fire Mountain
+				</a>
+			</div>
+			<div class="cityCol">
+				Wheatland&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">21 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/hard-rock-hotel-and-casino-sacramento-to-reopen-tomorrow-235263' target='article'>Hard Rock Hotel and Casino Sacramento to reopen tomorrow</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/hard-rock-hotel-and-casino-sacramento-at-fire-mountain-extends-closure-date-to-1-may-234556' target='article'>Hard Rock Hotel & Casino Sacramento at Fire Mountain extends closure date to 1 May</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/hard-rock-hotel-and-casino-sarcramento-extends-temporary-closure-234894' target='article'>Hard Rock Hotel & Casino Sarcramento extends temporary closure</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/hard-rock-hotel-and-casino-sacramento-at-fire-mountain-extends-closure-date-234225' target='article'>Hard Rock Hotel & Casino Sacramento at Fire Mountain extends closure date</a></li><li class='articleList'><a href='https://www.facebook.com/hardrocksacramento/photos/a.408300233110219/588013161805591' target='article'>Hard Rock Hotel & Casino Sacramento at Fire Mountain is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=770900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Harrah's Northern California
+				</a>
+			</div>
+			<div class="cityCol">
+				Ione&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">2 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/harrahs-northern-california-enhances-safety-protocols-for-reopening-235514' target='article'>Harrah's Northern California enhances safety protocols for reopening</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/harrahs-northern-california-to-temporarily-close-233899' target='article'>Harrah's Northern California to temporarily close</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=83200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Harrah's Resort Southern California
+				</a>
+			</div>
+			<div class="cityCol">
+				Valley Center&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/harrahs-resort-southern-california-to-reopen-on-22-may-235271' target='article'>Harrah's Resort Southern California to reopen on 22 May</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/harrah-s-resort-socal-announces-temporary-closure-234086' target='article'>Harrah’s Resort SoCal announces temporary closure</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1187300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Havasu Landing Resort & Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Havasu Lake&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				21 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">3 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/permalink.php?story_fbid=2640410112730234&id=348449728592962' target='article'>Havasu Landing Resort & Casino reopens</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/havasu-landing-resort-and-casino-closed-until-further-notice-234451' target='article'>Havasu Landing Resort & Casino closed until further notice</a></li><li class='articleList'><a href='https://www.facebook.com/348449728592962/photos/a.348453868592548/2479563878814859' target='article'>Havasu Landing Resort & Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=346400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Hawaiian Gardens Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Hawaiian Gardens&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/TheGardensCasino/posts/10163178824660054' target='article'>Hawaiian Gardens Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=907900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Hidden Oaks Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Covelo&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">15 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://hiddenoakscasino.com/' target='article'>Hidden Oaks Casino temporary closure extended until further notice</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=55000&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Hollywood Park Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Inglewood&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/playhpc/photos/a.10151471695020194/10156639763795194' target='article'>Hollywood Park Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=515800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Hustler Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Gardena&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				14 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">19 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/hustler-casino-reopens-235919' target='article'>HUSTLER Casino reopens</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/hustler-casino-announces-closure-due-to-covid-19-virus-233818' target='article'>HUSTLER Casino announces closure  due to COVID-19 virus</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=42000&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Jackson Rancheria Casino & Hotel
+				</a>
+			</div>
+			<div class="cityCol">
+				Jackson&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">8 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/jackson-rancheria-casino-and-hotel-announces-8-june-reopening-235483' target='article'>Jackson Rancheria Casino and Hotel announces 8 June reopening</a></li><li class='articleList'><a href='https://www.facebook.com/jacksoncasino/photos/a.403424757545/10157080455152546' target='article'>Jackson Rancheria Casino & Hotel is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=775700&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Jamul Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Jamul&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">18 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/jamul-casino-to-begin-phased-reopening-235190' target='article'>Jamul Casino to begin phased reopening</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/jamul-casino-announces-extension-of-closure-in-response-to-covid-19-234000' target='article'>Jamul Casino announces extension of closure in response to COVID-19</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/jamul-casino-will-remain-closed-until-further-notice-234419' target='article'>Jamul Casino will remain closed until further notice</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/five-tribes-jointly-announce-casino-closures-233924' target='article'>Five tribes jointly announce casino closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=515400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Kings Card Club
+				</a>
+			</div>
+			<div class="cityCol">
+				Stockton&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/kingscardroom/photos/a.380901358761787/1321488811369699' target='article'>Kings Card Club is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=306200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Konocti Vista Casino Resort, Marina & RV Park
+				</a>
+			</div>
+			<div class="cityCol">
+				Lakeport&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">15 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/konocti-vista-casino-resort-to-reopen-on-15-june-235657' target='article'>Konocti Vista Casino Resort to reopen on 15 June</a></li><li class='articleList'><a href='https://konocti-vista-casino.com' target='article'>Konocti Vista Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=557300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					La Jolla Trading Post & Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Pauma Valley&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">4 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.lajollatradingpost.com/' target='article'>La Jolla Trading Post & Casino reopens</a></li><li class='articleList'><a href='https://www.lajollaindians.com/post/coronavirus-update' target='article'>La Jolla Trading Post & Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=48500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Lake Elsinore Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Lake Elsinore&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/LakeElsinoreCasino/photos/a.1783181748571944/2661440124079431' target='article'>Lake Elsinore Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=308100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Limelight Cardroom
+				</a>
+			</div>
+			<div class="cityCol">
+				Sacramento&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/limelightcardroom/photos/a.1040503369323671/3703975396309775' target='article'>Limelight Cardroom is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=102900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Livermore Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Livermore&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/LivermoreCasino/posts/2953481501341712' target='article'>Livermore Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=418600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Los Alamitos Race Course
+				</a>
+			</div>
+			<div class="cityCol">
+				Los Alamitos&nbsp;
+			</div>
+			<div class="typeCol">
+				Horse Track&nbsp;
+			</div>
+			<div class="statusCol">
+				Racing without Spectators&nbsp;
+			</div>
+			<div class="dateCol">
+				14 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/LosAlamitosRaceCourse/posts/2983747058344083' target='article'>Los Alamitos Race Course is closed to the public</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=248000&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Lucky 7 Casino & Hotel
+				</a>
+			</div>
+			<div class="cityCol">
+				Smith River&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">1 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/lucky-7-casino-and-hotel-to-open-on-monday-235511' target='article'>Lucky 7 Casino & Hotel to open on Monday</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/lucky-7-casino-and-hotel-extends-temporary-closure-date-234263' target='article'>Lucky 7 Casino & Hotel extends temporary closure date</a></li><li class='articleList'><a href='https://www.facebook.com/Lucky7Casino/photos/a.120066898015584/3007450035943908' target='article'>Lucky 7 Casino & Hotel has temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=915800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Lucky 7 Fuel Mart
+				</a>
+			</div>
+			<div class="cityCol">
+				Smith River&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">8 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=45200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Lucky Bear Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Hoopa&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/LuckyBearCasino/posts/3634526306620740' target='article'>Lucky Bear Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=248400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Lucky Chances Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Colma&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				14 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/lucky-chances-casino-announces-temporary-closure-234386' target='article'>Lucky Chances Casino announces temporary closure</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=253100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Mono Wind Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Auberry&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				23 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">1 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/mono-wind-casino-to-reopen-on-1-june-235569' target='article'>Mono Wind Casino to reopen on 1 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/mono-wind-casino-plans-to-re-open-1-may-234528' target='article'>Mono Wind Casino plans to re-open 1 May.</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/mono-wind-casino-to-be-closed-until-further-notice-234788' target='article'>Mono Wind Casino to be closed until further notice</a></li><li class='articleList'><a href='https://www.facebook.com/MonoWindCasino/photos/a.2321006664602469/2782571781779286' target='article'>Mono Wind Casino closes temporarily</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=42100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Morongo Casino Resort & Spa
+				</a>
+			</div>
+			<div class="cityCol">
+				Cabazon&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/two-southern-california-casinos-begin-reopening-235262' target='article'>Two Southern California casinos begin reopening</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/morongo-casino-resort-and-spa-and-casino-morongo-extend-closure-dates-234213' target='article'>Morongo Casino Resort & Spa and Casino Morongo extend closure dates</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/morongo-casino-resort-and-spa-and-casino-morongo-will-remain-closed-until-further-notice-234418' target='article'>Morongo Casino Resort and Spa and Casino Morongo will remain closed until further notice</a></li><li class='articleList'><a href='https://www.morongocasinoresort.com/coronavirus' target='article'>Morongo Casino Resort & Spa is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=687500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Morongo Travel Center
+				</a>
+			</div>
+			<div class="cityCol">
+				Cabazon&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">29 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/morongo-casino-resort-and-spa-and-casino-morongo-will-remain-closed-until-further-notice-234418' target='article'>Morongo Casino Resort and Spa and Casino Morongo will remain closed until further notice</a></li><li class='articleList'><a href='https://www.morongocasinoresort.com/coronavirus' target='article'>Morongo Casino Resort & Spa is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=309200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Napa Valley Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				American Canyon&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				15 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/napavalleycasino/posts/10158156336159241' target='article'>Napa Valley Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=103500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Oaks Card Club
+				</a>
+			</div>
+			<div class="cityCol">
+				Emeryville&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/oaksclubroom/photos/a.1102157229876884/2833342980091625' target='article'>Oaks Card Club is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=127100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Ocean's Eleven Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Oceanside&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/southern-california-casinos-and-card-rooms-announce-temporary-closures-234374' target='article'>Southern California casinos and card rooms announce temporary closures</a></li><li class='articleList'><a href='https://www.facebook.com/oceans11casino/photos/a.413335865365660/3045795955452958' target='article'>Ocean's Eleven Casino Is Temporarily Closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=55200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Paiute Palace Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Bishop&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">8 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/paiute-palace-casino-to-reopen-on-8-june-235461' target='article'>Paiute Palace Casino to reopen on 8 June</a></li><li class='articleList'><a href='https://www.facebook.com/permalink.php?story_fbid=1988000251330880&id=187433071387616' target='article'>Paiute Palace Casino reopening update</a></li><li class='articleList'><a href='https://www.paiutepalace.com/' target='article'>Paiute Palace Casino is closed until further notice</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=521600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Pala Casino Spa and Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				Pala&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/pala-casino-spa-and-resort-to-reopen-on-friday-235302' target='article'>Pala Casino Spa and Resort to reopen on Friday</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/southern-california-casinos-and-card-rooms-announce-temporary-closures-234374' target='article'>Southern California casinos and card rooms announce temporary closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1002400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Parkwest Casino 580
+				</a>
+			</div>
+			<div class="cityCol">
+				Livermore&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/ParkWestCasino580/photos/a.434112499942013/3056693931017177' target='article'>Parkwest Casino 580 is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=948300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Parkwest Casino Cordova
+				</a>
+			</div>
+			<div class="cityCol">
+				Rancho Cordova&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/ParkWestCasinoCordova/photos/a.10150630881047405/10157199982112405' target='article'>Parkwest Casino Cordova is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=851200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Parkwest Casino Lodi
+				</a>
+			</div>
+			<div class="cityCol">
+				Lodi&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/ParkWestCasinoLodi/photos/a.342735342454106/3057429120984701' target='article'>Parkwest Casino Lodi is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=109400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Parkwest Casino Lotus
+				</a>
+			</div>
+			<div class="cityCol">
+				Sacramento&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/ParkWestCasinoLotus/photos/a.418029358218776/2942958612392492' target='article'>Parkwest Casino Lotus is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=109600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Parkwest Casino Sonoma
+				</a>
+			</div>
+			<div class="cityCol">
+				Petaluma&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/ParkWestCasinoSonoma/photos/a.379122158788060/3115366825163566' target='article'>Parkwest Casino Sonoma is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=105500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Pechanga Resort & Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Temecula&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">1 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/pechanga-resort-and-casino-targets-1-june-as-new-reopening-date-235013' target='article'>Pechanga Resort and Casino targets 1 June as new reopening date</a></li><li class='articleList'><a href='https://www.pechanga.com/' target='article'>Pechanga Resort & Casino reopening</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/pechanga-resort-and-casino-extends-closure-date-234420' target='article'>Pechanga Resort & Casino extends closure date</a></li><li class='articleList'><a href='https://www.facebook.com/pechanga/photos/a.102026607158/10157905607172159' target='article'>Pechanga Resort & Casino will reopen in April</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/southern-california-casinos-and-card-rooms-announce-temporary-closures-234374' target='article'>Southern California casinos and card rooms announce temporary closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=245900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Pit River Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Burney&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				23 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">17 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/pit-river-casino-to-reopen-on-17-june-235858' target='article'>Pit River Casino to reopen on 17 June</a></li><li class='articleList'><a href='https://www.facebook.com/PitRiverCasino/posts/2848677541845181' target='article'>Pit River Casino has temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=48600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Players Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Ventura&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/playerscasino/photos/a.398528743538353/2886830558041480' target='article'>Players Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=750100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Quechan Casino Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				Winterhaven&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				23 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/quechan-casino-resort-closed-until-further-notice-234249' target='article'>Quechan Casino Resort closed until further notice</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=995700&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Rain Rock Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Yreka&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">1 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/rain-rock-casino-is-open-again-235650' target='article'>Rain Rock Casino is open again</a></li><li class='articleList'><a href='https://rainrockcasino.com/2020/03/30/latest-update-on-covid-19/' target='article'>Rain Rock Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=635200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Red Earth Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Thermal&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				22 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">1 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/red-earth-casino-to-reopen-on-1-june-235567' target='article'>Red Earth Casino to reopen on 1 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/red-earth-casino-to-be-closed-until-further-notice-234415' target='article'>Red Earth Casino to be closed until further notice</a></li><li class='articleList'><a href='https://www.desertsun.com/story/news/health/2020/03/25/coronavirus-torres-martinez-tribe-last-coachella-valley-close-its-casino/5083852002/' target='article'>Coronavirus: Torres-Martinez last tribe in Coachella Valley to close its casino</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=310800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Red Fox Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Laytonville&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/1814441438860050/photos/a.1817151641922363/2253105738326949' target='article'>Red Fox Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=743100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Red Hawk Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Placerville&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">8 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/red-hawk-casino-delays-reopening-to-8-june-235484' target='article'>Red Hawk Casino delays reopening to 8 June</a></li><li class='articleList'><a href='https://www.facebook.com/RedHawkSocial/posts/3042112709201884' target='article'>Red Hawk Casino reopening update</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/red-hawk-casino-to-reopen-on-1-june-235253' target='article'>Red Hawk Casino to reopen on 1 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/red-hawk-casino-extends-temporary-closure-indefinitely-234404' target='article'>Red Hawk Casino extends temporary closure indefinitely</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/red-hawk-casino-to-remain-temporarily-closed-234260' target='article'>Red Hawk Casino to remain temporarily closed</a></li><li class='articleList'><a href='https://www.sacbee.com/news/coronavirus/article241264581.html' target='article'>Thunder Valley, Red Hawk, Harrah’s casinos shutting down amid growing coronavirus fears</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=767900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Redwood Hotel Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Klamath&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/redwood-hotel-casino-extends-temporary-closure-234487' target='article'>Redwood Hotel Casino extends temporary closure</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/redwood-hotel-casino-announces-temporary-closure-234012' target='article'>Redwood Hotel Casino announces temporary closure</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=563100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					River Rock Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Geyserville&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/river-rock-casino-to-close-temporarily-234246' target='article'>River Rock Casino to close temporarily</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=42400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Robinson Rancheria Resort & Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Nice&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.rrrc.com/covid19-pandemic' target='article'>Robinson Rancheria Resort & Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=536400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Rolling Hills Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Corning&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">21 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/rolling-hills-casino-will-reopen-on-thursday-235223' target='article'>Rolling Hills Casino will reopen on Thursday</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/paskenta-tribal-government-temporarily-closes-rolling-hills-casino-234254' target='article'>Paskenta Tribal Government temporarily closes Rolling Hills Casino</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=874600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Running Creek Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Upper Lake&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">8 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/running-creek-casino-is-now-open-235698' target='article'>Running Creek Casino is now open</a></li><li class='articleList'><a href='https://www.runningcreekcasino.com/cummunity-involvment' target='article'>Running Creek Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=698400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					San Manuel Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Highland&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				15 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">9 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/san-manuel-casino-to-start-phased-reopening-on-9-june-235639' target='article'>San Manuel Casino to start phased reopening on 9 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/san-manuel-casino-extends-temporary-closure-235335' target='article'>San Manuel Casino extends temporary closure</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/san-manuel-casino-extends-temporary-closure-through-31-may-234741' target='article'>San Manuel Casino extends temporary closure through 31 May</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/san-manuel-casino-extends-closure-through-30-april-234209' target='article'>San Manuel Casino extends closure through 30 April</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/southern-california-casinos-and-card-rooms-announce-temporary-closures-234374' target='article'>Southern California casinos and card rooms announce temporary closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=124500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					San Pablo Lytton Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				San Pablo&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">16 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/san-pablo-lytton-casino-to-reopen-on-tuesday-235803' target='article'>San Pablo Lytton Casino to reopen on Tuesday</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/san-pablo-lytton-casino-to-close-temporarily-234245' target='article'>San Pablo Lytton Casino to close temporarily</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=436100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Santa Anita Park
+				</a>
+			</div>
+			<div class="cityCol">
+				Arcadia&nbsp;
+			</div>
+			<div class="typeCol">
+				Horse Track&nbsp;
+			</div>
+			<div class="statusCol">
+				Racing without Spectators&nbsp;
+			</div>
+			<div class="dateCol">
+				27 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">26 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.santaanita.com/press-releases/santa-anita-park-will-temporarily-close-for-live-racing-effective-immediately-in-response-to-the-covid-19-pandemic/#.XrrtPmhKhaR' target='article'>Santa Anita Park is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1188400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Seven Mile Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Chula Vista&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/sevenmilecasino/photos/a.826859180694979/2816559275058283' target='article'>Seven Mile Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=308300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Sherwood Valley Rancheria Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Willits&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/sherwood-valley-rancheria-casino-postpones-reopening-235841' target='article'>Sherwood Valley Rancheria Casino postpones reopening</a></li><li class='articleList'><a href='https://www.svrcasino.com/covid-19' target='article'>Sherwood Valley Casino has suspended all operations until further notice</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=860000&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Soboba Casino Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				San Jacinto&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">27 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/california-casinos-approach-reopening-dates-235201' target='article'>California casinos approach reopening dates</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/soboba-casino-resort-extends-temporary-closure-through-april-234217' target='article'>Soboba Casino Resort extends temporary closure through April</a></li><li class='articleList'><a href='https://www.soboba.com/soboba-casino-resort-closure' target='article'>Soboba Casino Resort remains closed</a></li><li class='articleList'><a href='https://www.facebook.com/SobobaCasinoResort/posts/10158238290636115' target='article'>Soboba Casino Resort is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=437200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Solano Race Place
+				</a>
+			</div>
+			<div class="cityCol">
+				Vallejo&nbsp;
+			</div>
+			<div class="typeCol">
+				Horse Track&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.scfair.com/solano-race-place' target='article'>Solano Race Place is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=43300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Spotlight 29 Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Coachella&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/spotlight-29-casino-and-tortoise-rock-casino-to-reopen-doors-235270' target='article'>Spotlight 29 Casino and Tortoise Rock Casino to reopen doors</a></li><li class='articleList'><a href='https://www.pe.com/2020/03/19/spotlight-29-and-tortoise-rock-casinos-close-temporarily-because-of-coronavirus-pandemic/' target='article'>Spotlight 29 and Tortoise Rock casinos close</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=43000&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Sycuan Casino Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				El Cajon&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">20 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.sycuan.com/about-us/covid-19-updates/' target='article'>Sycuan Casino Resort reopens</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/sycuan-casino-resort-extends-temporary-closure-234009' target='article'>Sycuan Casino Resort extends temporary closure</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/five-tribes-jointly-announce-casino-closures-233924' target='article'>Five tribes jointly announce casino closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=43100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Table Mountain Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Friant&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">8 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/table-mountain-casino-to-reopen-on-8-june-235572' target='article'>Table Mountain Casino to reopen on 8 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/table-mountain-casino-will-remain-closed-through-may-234432' target='article'>Table Mountain Casino will remain closed through May</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/table-mountain-casino-extends-closure-to-12-april-234023' target='article'>Table Mountain Casino extends closure to 12 April</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/table-mountain-rancheria-tribal-council-and-casino-board-of-directors-closes-tribal-casinos-233826' target='article'>Table Mountain Rancheria Tribal Council and Casino Board of Directors closes tribal casinos</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=55300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Tachi Palace Casino Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				Lemoore&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">28 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/tachi-palace-casino-resort-to-begin-reopening-on-28-may-235389' target='article'>Tachi Palace Casino Resort to begin reopening on 28 May</a></li><li class='articleList'><a href='https://www.tachipalace.com/tachi-palace-casino-resort-announces-temporary-closure-due-to-covid-19/' target='article'>Tachi Palace Casino Resort announces temporary closure due to Covid-19</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=350100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					The Aviator Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Delano&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://theaviatorcasino.com/' target='article'>The Aviator Casino temporarily suspends operations</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=54600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					The Bicycle Hotel & Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Bell Gardens&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">19 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/the-bicycle-hotel-and-casino-to-reopen-tomorrow-235894' target='article'>The Bicycle Hotel and Casino to reopen tomorrow</a></li><li class='articleList'><a href='https://www.thebike.com/temporary_closure_announcement.php' target='article'>The Bicycle Hotel & Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=113500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					The Palace Poker Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Hayward&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				15 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1004900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					The Play Station 777
+				</a>
+			</div>
+			<div class="cityCol">
+				Blue Lake&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.bluelakecasino.com/covid19-update-temp-closure/' target='article'>The Play Station 777 is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1098700&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					The Saloon at Stones Gambling Hall
+				</a>
+			</div>
+			<div class="cityCol">
+				Citrus Heights&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.stonesgamblinghall.com/coronavirusclosing' target='article'>The Saloon and The Tavern at Stones Gambling Hall are temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1293600&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					The Tavern at Stones Gambling Hall
+				</a>
+			</div>
+			<div class="cityCol">
+				Citrus Heights&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.stonesgamblinghall.com/coronavirusclosing' target='article'>The Saloon and The Tavern at Stones Gambling Hall are temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=585400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Thunder Valley Casino Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				Lincoln&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">8 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/thunder-valley-casino-resort-will-reopen-on-8-june-235334' target='article'>Thunder Valley Casino Resort will reopen on 8 June</a></li><li class='articleList'><a href='https://www.facebook.com/photo/?fbid=3222812227749460&set=a.119457298084984' target='article'>Thunder Valley Casino Resort reopening update</a></li><li class='articleList'><a href='https://www.sacbee.com/news/coronavirus/article241264581.html' target='article'>Thunder Valley, Red Hawk, Harrah’s casinos shutting down amid growing coronavirus fears</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=860100&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Tortoise Rock Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Twentynine Palms&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				19 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/spotlight-29-casino-and-tortoise-rock-casino-to-reopen-doors-235270' target='article'>Spotlight 29 Casino and Tortoise Rock Casino to reopen doors</a></li><li class='articleList'><a href='https://www.pe.com/2020/03/19/spotlight-29-and-tortoise-rock-casinos-close-temporarily-because-of-coronavirus-pandemic/' target='article'>Spotlight 29 and Tortoise Rock casinos close</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1002300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Towers Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Grass Valley&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">18 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/towers-casino-closes-down-again-235309' target='article'>Towers Casino closes down again</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/towers-casino-card-room-reopens-235264' target='article'>Towers Casino Card Room reopens</a></li><li class='articleList'><a href='https://www.facebook.com/permalink.php?story_fbid=2971027826293865&id=107297549333588&substory_index=0' target='article'>Towers Casino is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=748200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Turlock Poker Room
+				</a>
+			</div>
+			<div class="cityCol">
+				Turlock&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/turlockpokerroom/photos/a.1476724345915486/2479714985616412' target='article'>Turlock Poker Room is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=247900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Twin Pine Casino and Hotel
+				</a>
+			</div>
+			<div class="cityCol">
+				Middletown&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">23 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/TwinPineCasinoandHotel/posts/10157038991262121' target='article'>Twin Pine Casino and Hotel reopens</a></li><li class='articleList'><a href='https://www.twinpine.com/' target='article'>Twin Pine Casino and Hotel closes temporarily</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/twin-pine-casino-and-hotel-in-california-will-close-temporarily-234261' target='article'>Twin Pine Casino and Hotel in California will close temporarily</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1260200&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Vaca Valley Bingo
+				</a>
+			</div>
+			<div class="cityCol">
+				Vacaville&nbsp;
+			</div>
+			<div class="typeCol">
+				Bingo Hall&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				16 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/vaca-valley-bingo-temporarily-closes-234501' target='article'>Vaca Valley Bingo temporarily closes</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=527900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Valley View Casino & Hotel
+				</a>
+			</div>
+			<div class="cityCol">
+				Valley Center&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">22 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/valley-view-casino-and-hotel-plans-to-reopen-22-may-235110' target='article'>Valley View Casino and Hotel plans to reopen 22 May</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/valley-view-casino-and-hotel-extends-closure-date-234221' target='article'>Valley View Casino & Hotel extends closure date</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/valley-view-casino-and-hotel-remains-temporarily-closed-234970' target='article'>Valley View Casino & Hotel remains temporarily closed</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/southern-california-casinos-and-card-rooms-announce-temporary-closures-234374' target='article'>Southern California casinos and card rooms announce temporary closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1125800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Viejas Bingo
+				</a>
+			</div>
+			<div class="cityCol">
+				Alpine&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">13 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/viejas-bingo-and-slot-parlor-to-return-on-13-june-235775' target='article'>Viejas Bingo and Slot Parlor to return on 13 June</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/five-tribes-jointly-announce-casino-closures-233924' target='article'>Five tribes jointly announce casino closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=43400&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Viejas Casino & Resort
+				</a>
+			</div>
+			<div class="cityCol">
+				Alpine&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">18 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/two-southern-california-casinos-begin-reopening-235262' target='article'>Two Southern California casinos begin reopening</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/viejas-casino-and-resort-announces-18-may-reopening-date-235014' target='article'>Viejas Casino and Resort announces 18  May reopening date</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/five-tribes-jointly-announce-casino-closures-233924' target='article'>Five tribes jointly announce casino closures</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1438800&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Westlane Card Room
+				</a>
+			</div>
+			<div class="cityCol">
+				Stockton&nbsp;
+			</div>
+			<div class="typeCol">
+				Card Room&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				18 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.facebook.com/425895681267276/photos/a.627837184406457/771897823333725' target='article'>Westlane Card Room is temporarily closed</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=914900&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Winnedumah Winn's Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Independence&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">7 Jun 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/winnedumah-winns-casino-will-reopen-on-sunday-235936' target='article'>Winnedumah Winn's Casino will reopen on Sunday</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=42300&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Win-River Resort & Casino
+				</a>
+			</div>
+			<div class="cityCol">
+				Redding&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Reopened&nbsp;
+			</div>
+			<div class="dateCol">
+				17 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">15 May 2020&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/win-river-resort-and-casino-planning-a-15-may-reopening-235010' target='article'>Win-River Resort and Casino planning a 15 May reopening</a></li><li class='articleList'><a href='https://www.facebook.com/winrivercasino/posts/3115650665123700' target='article'>Win-River Resort & Casino reopens</a></li><li class='articleList'><a href='https://www.facebook.com/winrivercasino/posts/3026870960668338' target='article'>Win-River Resort & Casino will be closed through at least April</a></li><li class='articleList'><a href='https://www.facebook.com/winrivercasino/posts/3087418464613587' target='article'>Win-River Resort & Casino remains closed until further notice</a></li><li class='articleList'><a href='http://www.casinocitytimes.com/news/article/win-river-resort-and-casino-to-close-until-further-notice-234251' target='article'>Win-River Resort & Casino to close until further notice</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+			<div class="propertyCol">
+				<a href="/showproperty.cfm?PropertyIdList=1307500&PlaceID=258&NoTempValues=1&Type=cor&PGID=4" rel="nofollow">
+					Yokut Gas
+				</a>
+			</div>
+			<div class="cityCol">
+				Lemoore&nbsp;
+			</div>
+			<div class="typeCol">
+				Indian Casino&nbsp;
+			</div>
+			<div class="statusCol">
+				Closed&nbsp;
+			</div>
+			<div class="dateCol">
+				20 Mar 2020&nbsp;
+				
+			</div>
+
+			<div class="dateCol">&nbsp;</div>
+			<div class="articleCol"><ul><li class='articleList'><a href='https://www.tachipalace.com/tachi-palace-casino-resort-announces-temporary-closure-due-to-covid-19/' target='article'>Tachi Palace Casino Resort announces temporary closure due to Covid-19</a></li></ul></div>
+			<div style="clear:both"></div>
+		
+	<div style="margin-bottom:10px"></div>
+		</div> 
+	</div> 
+
+	
+
+
+<div class="hrblue"></div>
+<div id="FooterLinks">
+	<br />
+
+	<a href="/feedback/">Feedback</a>&nbsp;&nbsp;|&nbsp;
+	<a href="http://www.casinocitypress.com/gbd/GBDOnline/" target="_blank">Order Info</a>
+
+	<div id="FooterBottom">
+		<a href="http://www.casinocitypress.com/privacy/ccnetwork.cfm" target="_blank">CASINO CITY NETWORK</a>:
+		<a href="http://www.casinocitypress.com" target="_blank">Casino City Press</a> | 
+		<a href="http://www.casinovendors.com" target="_blank">Casino Vendors</a> | 
+		<a href="http://www.casinocity.com" target="_blank">Casino City</a> | 
+		<a href="http://www.casinocitytimes.com" target="_blank">Casino City Times</a><BR>
+		Copyright &copy; 2002-2020 Casino City, All Rights Reserved. 
+		Please read our <a href="http://www.casinocitypress.com/Privacy/" target="_blank">Privacy Policy</a>.
+	</div>
+	<br /><br />
+</div>
+<script src="https://www.google-analytics.com/urchin.js" type="text/javascript"></script>
+<script type="text/javascript">
+	_uacct = "UA-651542-1";
+	urchinTracker();
+</script>
+
+
+</body>
+</html>
